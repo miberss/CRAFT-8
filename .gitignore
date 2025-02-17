@@ -43,3 +43,14 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+/.idea
+/out
+/build
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+*.iml
+*.class
