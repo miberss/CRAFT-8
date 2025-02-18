@@ -19,6 +19,7 @@ class PixelGrid {
     }
 
     private val grid = ByteArray(BYTE_WIDTH * HEIGHT) // 8192 bytes for grid
+    private val framebuffer = DirectFramebuffer()
 
     // check if xy is in bounds
     private fun isOutBounds(x: Int, y: Int): Boolean {
@@ -193,14 +194,20 @@ class PixelGrid {
             currentX++
         }
     }
+
+    fun updateFramebuffer() {
+        for (i in 0 until WIDTH) {
+            for (j in 0 until HEIGHT) {
+                framebuffer.set(i, j, Color.getByte(getPixel(i, j)))
+            }
+        }
+    }
+    fun getFramebuffer(): DirectFramebuffer {
+        return framebuffer
+    }
 }
 
 fun sendFramebuffer(player: Player, pixelGrid: PixelGrid) {
-    val fb = DirectFramebuffer()
-    for (i in 0 until PixelGrid.WIDTH) {
-        for (j in 0 until PixelGrid.HEIGHT) {
-            fb.set(i, j, Color.getByte(pixelGrid.getPixel(i, j)))
-        }
-    }
-    player.sendPacket(fb.preparePacket(1))
+    pixelGrid.updateFramebuffer()
+    player.sendPacket(pixelGrid.getFramebuffer().preparePacket(1))
 }

@@ -6,7 +6,8 @@ import API.MathAPI
 import API.TimeAPI
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.jse.JsePlatform
-import java.util.concurrent.Executors
+import kotlinx.coroutines.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -15,7 +16,7 @@ class Game {
     private val lua: Globals = JsePlatform.standardGlobals()
     private var updateFn: LuaValue? = null
     private var drawFn: LuaValue? = null
-    var time: Double = 0.0
+    private var time: Double = 0.0
 
     private val inputMapping = mapOf(
         0 to "left",
@@ -26,26 +27,26 @@ class Game {
         5 to "jump"
     )
 
-    private val tickExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "GameTickThread").apply { isDaemon = true }
-    }
-    private val renderExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "GameRenderThread").apply { isDaemon = true }
+    // using ConcurrentHashMap for thread-safe player inputs
+    private val playerInputs = ConcurrentHashMap<String, Boolean>().apply {
+        inputMapping.values.forEach { put(it, false) }
     }
 
-    private val stateLock = ReentrantLock()
+    private val timeLock = ReentrantLock()
 
-    private val playerInputs = mutableMapOf<String, Boolean>().withDefault { false }
+    private val coroutineScope = CoroutineScope(Dispatchers.Default)
 
     init {
         setupLuaAPI()
     }
+
     private fun setupLuaAPI() {
         GraphicsAPI(lua, pixelGrid)
         MathAPI(lua)
         TimeAPI(lua, time)
         InputAPI(lua, inputMapping, playerInputs)
     }
+
     fun loadScript(script: String) {
         try {
             lua.load(script).call()
@@ -58,43 +59,41 @@ class Game {
             e.printStackTrace()
         }
     }
+
     fun update(deltaTime: Double) {
-        tickExecutor.submit {
-            stateLock.withLock {
+        coroutineScope.launch {
+            timeLock.withLock {
                 time += deltaTime
-                try {
-                    updateFn?.call(LuaValue.valueOf(deltaTime))
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+            }
+            try {
+                updateFn?.call(LuaValue.valueOf(deltaTime))
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
+
     fun draw() {
-        renderExecutor.submit {
-            stateLock.withLock {
-                try {
-                    drawFn?.call()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+        coroutineScope.launch {
+            try {
+                drawFn?.call()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
+
     fun updatePlayerInputs(inputs: Map<String, Boolean>) {
-        tickExecutor.submit {
-            stateLock.withLock {
-                playerInputs.clear()
-                playerInputs.putAll(inputs)
-            }
+        coroutineScope.launch {
+            inputs.forEach { (key, value) -> playerInputs[key] = value }
         }
     }
+
     fun shutdown() {
-        tickExecutor.shutdown()
-        renderExecutor.shutdown()
+        coroutineScope.cancel()
     }
+
     fun getPixelGrid(): PixelGrid {
         return pixelGrid
     }
 }
-
