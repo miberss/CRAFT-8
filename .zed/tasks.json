@@ -1,0 +1,16 @@
+[
+  {
+    "label": "Run Project",
+    "type": "shell",
+    "command": "./gradlew run",
+    "group": "build",
+    "problemMatcher": []
+  },
+  {
+    "label": "Refresh Gradle",
+    "type": "shell",
+    "command": "./gradlew.bat build --refresh-dependencies",
+    "group": "build",
+    "problemMatcher": []
+  }
+]

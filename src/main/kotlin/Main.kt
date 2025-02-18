@@ -39,8 +39,6 @@ local c_imag = 0.27015
 local bailout = 4
 
 pixel_data = {}
-
--- Reuse pixel data to avoid reallocation
 for y = 0, height do
     pixel_data[y] = {}
 end
@@ -78,7 +76,6 @@ function _update()
 end
 
 function _draw()
-    -- Directly draw the pixels without another loop
     for py = 0, height do
         for px = 0, width do
             pset(px, py, pixel_data[py][px])

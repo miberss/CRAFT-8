@@ -11,7 +11,7 @@ class GameStorage(private val storageDir: String) {
     // get the game directory for player
     private fun getPlayerGameDir(playerId: UUID): File {
         val playerDir = File(storageDir, playerId.toString())
-        playerDir.mkdirs() // Create the directory if it doesn't exist
+        playerDir.mkdirs() // create the directory if it doesn't exist
         return playerDir
     }
 
