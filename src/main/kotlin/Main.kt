@@ -24,63 +24,98 @@ fun main() {
 fun initGame() {
     val game = Game()
     game.loadScript("""
-local x_center = 0
-local y_center = 0
-local zoom = 1
-local max_iter = 30
-local speed = 0.05
-local zoom_speed = 1.1
-local width = 127
-local height = 127
-local x_scale = 3 / width
-local y_scale = 3 / height
-local c_real = -0.7
-local c_imag = 0.27015
-local bailout = 4
+function print_centered(str, y, col)
+  print(str, 64 - (#str * 2), y, col) 
+end
 
-pixel_data = {}
-for y = 0, height do
-    pixel_data[y] = {}
+function _init()
+  t = 0
+  particles = {}
+  message = "you win!"
+  message_y = 120
+  poly_rot = 0
+  poly_scale = 1
+  poly_col = 8
 end
 
 function _update()
-    local move = speed / zoom
-    if btn(0) then x_center = x_center - move end
-    if btn(1) then x_center = x_center + move end
-    if btn(2) then y_center = y_center - move end
-    if btn(3) then y_center = y_center + move end
-    if btn(4) then zoom = zoom * zoom_speed
-    elseif btn(5) then zoom = zoom / zoom_speed end
-    
-    local x_scale_zoom = x_scale / zoom
-    local y_scale_zoom = y_scale / zoom
-    local x_offset = x_center - 2 / zoom
-    local y_offset = y_center - 1.5 / zoom
-    for py = 0, height do
-        local y0 = py * y_scale_zoom + y_offset
-        for px = 0, width do
-            local x0 = px * x_scale_zoom + x_offset
-            local x, y = x0, y0
-            local x2, y2 = x * x, y * y
-            local iter = 0
-            while iter < max_iter and (x2 + y2 <= bailout) do
-                y = 2 * x * y + c_imag
-                x = x2 - y2 + c_real
-                x2 = x * x
-                y2 = y * y
-                iter = iter + 1
-            end
-            pixel_data[py][px] = iter == max_iter and 0 or (iter % 15) + 1
-        end
-    end
+  t = t + 0.1
+  message_y = message_y - 0.5
+  if message_y < 60 then message_y = 60 end
+  
+  -- Update particles
+  for p in all(particles) do
+    p.x = p.x + p.dx
+    p.y = p.y + p.dy
+    p.life = p.life - 1
+    if p.life <= 0 then del(particles, p) end
+  end
+  
+  -- Add new particles
+  if t % 0.1 < 0.05 then
+    add(particles, {
+      x = 64 + math.sin(t) * 40,
+      y = 64 + math.cos(t) * 40,
+      dx = math.sin(t) * 2,
+      dy = math.cos(t) * 2,
+      life = 30,
+      col = (t * 10) % 8 + 8
+    })
+  end
+  
+  -- Rotate and scale polygon
+  poly_rot = poly_rot + 0.02
+  poly_scale = 1 + math.sin(t) * 0.5
+  poly_col = (t * 10) % 8 + 8
 end
 
 function _draw()
-    for py = 0, height do
-        for px = 0, width do
-            pset(px, py, pixel_data[py][px])
-        end
-    end
+  cls()
+  
+  -- Layer 1: Rainbow sine wave
+  for x = 0, 128 do
+    y = 64 + math.sin(x / 16 + t) * 20
+    col = (x + t * 10) % 8 + 8
+    pset(x, y, col)
+  end
+  
+  -- Layer 2: Rotating and scaling polygon
+  draw_polygon(64, 64, 30, 6, poly_rot, poly_scale, poly_col)
+  
+  -- Layer 3: Particles
+  for p in all(particles) do
+    circfill(p.x, p.y, 2, p.col)
+  end
+  
+  -- Layer 4: Scrolling text
+  scroll_x = (t * 20) % 128
+  print("this is a super cool demo! ", 128 - scroll_x, 10, 7)
+  print("this is a super cool demo! ", 256 - scroll_x, 10, 7)
+  
+  -- Layer 5: Bouncing message
+  print_centered(message, message_y, 12)
+  
+  
+  -- Layer 7: Interactive reset text
+  print_centered("press x to reset", 100, 8)
+  if btn(5) then
+    message_y = 120
+  end
+end
+
+function draw_polygon(x, y, radius, sides, rot, scale, col)
+  local angle = 2 * math.pi / sides
+  local pts = {}
+  for i = 0, sides do
+    local px = x + math.cos(i * angle + rot) * radius * scale
+    local py = y + math.sin(i * angle + rot) * radius * scale
+    add(pts, px)
+    add(pts, py)
+  end
+  for i = 1, #pts - 2, 2 do
+    line(pts[i], pts[i + 1], pts[i + 2], pts[i + 3], col)
+  end
+  line(pts[#pts - 1], pts[#pts], pts[1], pts[2], col)
 end
 """)
     MinecraftServer.getSchedulerManager().scheduleTask({

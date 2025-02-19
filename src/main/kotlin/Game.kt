@@ -1,9 +1,6 @@
 package me.mibers
 
-import API.GraphicsAPI
-import API.InputAPI
-import API.MathAPI
-import API.TimeAPI
+import API.*
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.jse.JsePlatform
 import kotlinx.coroutines.*
@@ -45,11 +42,14 @@ class Game {
         MathAPI(lua)
         TimeAPI(lua, time)
         InputAPI(lua, inputMapping, playerInputs)
+        TableAPI(lua)
     }
 
     fun loadScript(script: String) {
         try {
             lua.load(script).call()
+            val initFn = lua.get("_init")
+            if (initFn?.isfunction() == true) initFn.call()
             updateFn = lua.get("_update")
             if (updateFn?.isfunction() != true) updateFn = null
 

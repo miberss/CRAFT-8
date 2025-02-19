@@ -4,207 +4,170 @@ import net.minestom.server.entity.Player
 import net.minestom.server.map.framebuffers.DirectFramebuffer
 import kotlin.math.*
 
-/*
-represents a 128x128 pixel grid where each pixel is stored as a nibble (4 bits, 16 colors).
-the grid is stored in a compact ByteArray, with two pixels packed into each byte.
-*/
 class PixelGrid {
     companion object {
         const val WIDTH = 128
         const val HEIGHT = 128
-        const val BYTE_WIDTH = WIDTH / 2 // 64 bytes / row, 2 nibbles in one byte
+        const val BYTE_WIDTH = WIDTH / 2
         private const val NIBBLE_MASK = 0xF
-        private const val LOW_NIBBLE_MASK = 0x0F
-        private const val HIGH_NIBBLE_MASK = 0xF0
+        private val COLOR_CACHE = Array(16) { Color.getByte(it) }
     }
-
-    private val grid = ByteArray(BYTE_WIDTH * HEIGHT) // 8192 bytes for grid
+    private val fontRenderer = FontRenderer()
+    private val grid = ByteArray(BYTE_WIDTH * HEIGHT)
     private val framebuffer = DirectFramebuffer()
 
-    // check if xy is in bounds
-    private fun isOutBounds(x: Int, y: Int): Boolean {
-        return (x !in 0 until WIDTH || y !in 0 until HEIGHT)
-    }
-
-    // calc byte index in 1d array
-    private fun getByteIndex(x: Int, y: Int): Int {
-        return (y * BYTE_WIDTH) + (x / 2)
-    }
-
-    /* high nibble case, clear high nibble and set to new value
-    1. clear high nibble using 0x0F (00001111)
-    2. shift the value 4 bits to the left; position it as the high nibble
-    3. combine with the lower nibble using 'or' */
-    private fun setHighNibble(byte: Byte, value: Int): Byte {
-        return ((byte.toInt() and LOW_NIBBLE_MASK) or (value shl 4)).toByte()
-    }
-
-    /* low nibble case, clear low nibble and set new value,
-    1. clear low nibble using 0xF0 (11110000)
-    2. combine (or) with the new value */
-    private fun setLowNibble(byte: Byte, value: Int): Byte {
-        return ((byte.toInt() and HIGH_NIBBLE_MASK) or (value and NIBBLE_MASK)).toByte()
-    }
-
-    // >> to get high nibble then mask 0xF
-    private fun getHighNibble(byte: Byte): Int {
-        return (byte.toInt() shr 4) and NIBBLE_MASK
-    }
-
-    // mask 0xF to get low nibble
-    private fun getLowNibble(byte: Byte): Int {
-        return byte.toInt() and NIBBLE_MASK
-    }
-
     fun setPixel(x: Int, y: Int, color: Int) {
-        if (isOutBounds(x, y)) return
-        val colorValue = color % 16
-        val byteIndex = getByteIndex(x, y)
-        grid[byteIndex] = if ((x % 2) == 0) {
-            setHighNibble(grid[byteIndex], colorValue)
+        if (x !in 0 until WIDTH || y !in 0 until HEIGHT) return
+        val byteIndex = y * BYTE_WIDTH + (x shr 1)
+        val current = grid[byteIndex].toInt()
+        grid[byteIndex] = if (x and 1 == 0) {
+            (current and 0x0F or ((color and NIBBLE_MASK) shl 4)).toByte()
         } else {
-            setLowNibble(grid[byteIndex], colorValue)
+            (current and 0xF0 or (color and NIBBLE_MASK)).toByte()
         }
     }
 
     fun getPixel(x: Int, y: Int): Int {
-        if (isOutBounds(x, y)) return 0
-        val byteIndex = getByteIndex(x, y)
-        return if (x % 2 == 0) {
-            getHighNibble(grid[byteIndex])
-        } else {
-            getLowNibble(grid[byteIndex])
-        }
+        if (x !in 0 until WIDTH || y !in 0 until HEIGHT) return 0
+        val byte = grid[y * BYTE_WIDTH + (x shr 1)].toInt()
+        return if (x and 1 == 0) (byte shr 4) and NIBBLE_MASK else byte and NIBBLE_MASK
     }
 
-    // clears the grid with the nibble value
     fun clear(value: Int) {
-        // lower 4 bits only
         val nibble = (value and NIBBLE_MASK)
-        // pack (<<) nibble into both halves of the byte, 0x3 -> 0x33,
-        val packedValue = ((nibble shl 4) or nibble).toByte()
-        grid.fill(packedValue)
+        grid.fill(((nibble shl 4) or nibble).toByte())
     }
 
     fun line(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
-        var x1 = x1
-        var y1 = y1
-        val dx = abs(x2 - x1)
-        val dy = abs(y2 - y1)
-        val sx = if (x1 < x2) 1 else -1
-        val sy = if (y1 < y2) 1 else -1
-        var err = dx - dy
+        var cx = x1
+        var cy = y1
+        val dx = abs(x2 - cx)
+        val dy = -abs(y2 - cy)
+        val sx = if (cx < x2) 1 else -1
+        val sy = if (cy < y2) 1 else -1
+        var err = dx + dy
+        val c = color and NIBBLE_MASK
 
         while (true) {
-            setPixel(x1, y1, color)
-            if (x1 == x2 && y1 == y2) break
-            val e2 = 2 * err
-            if (e2 > -dy) {
-                err -= dy
-                x1 += sx
+            if (cx in 0 until WIDTH && cy in 0 until HEIGHT) {
+                setPixel(cx, cy, c)
             }
-            if (e2 < dx) {
+
+            if (cx == x2 && cy == y2) break
+            val e2 = 2 * err
+            if (e2 >= dy) {
+                err += dy
+                cx += sx
+            }
+            if (e2 <= dx) {
                 err += dx
-                y1 += sy
+                cy += sy
             }
         }
     }
 
     fun circ(cx: Int, cy: Int, r: Int, color: Int) {
-        var d = (5 - r * 4) / 4
         var x = 0
         var y = r
-        do {
-            setPixel(cx + x, cy + y, color)
-            setPixel(cx + x, cy - y, color)
-            setPixel(cx - x, cy + y, color)
-            setPixel(cx - x, cy - y, color)
-            setPixel(cx + y, cy + x, color)
-            setPixel(cx + y, cy - x, color)
-            setPixel(cx - y, cy + x, color)
-            setPixel(cx - y, cy - x, color)
+        var d = 3 - 2 * r
+        val c = color and NIBBLE_MASK
+
+        while (y >= x) {
+            setPixel(cx + x, cy + y, c)
+            setPixel(cx - x, cy + y, c)
+            setPixel(cx + x, cy - y, c)
+            setPixel(cx - x, cy - y, c)
+            setPixel(cx + y, cy + x, c)
+            setPixel(cx - y, cy + x, c)
+            setPixel(cx + y, cy - x, c)
+            setPixel(cx - y, cy - x, c)
+
             if (d < 0) {
-                d += 2 * x + 1
-            }
-            else {
-                d += 2 * (x - y) + 1
+                d += 4 * x + 6
+            } else {
+                d += 4 * (x - y) + 10
                 y--
             }
             x++
         }
-        while (x <= y)
     }
 
     fun circFill(cx: Int, cy: Int, r: Int, color: Int) {
-        var d = (5 - r * 4) / 4
         var x = 0
         var y = r
+        var d = 3 - 2 * r
+        val c = color and NIBBLE_MASK
 
-        do {
+        while (x <= y) {
             // Draw horizontal lines to fill the circle
-            for (i in cx - x..cx + x) {
-                setPixel(i, cy + y, color) // Bottom half
-                setPixel(i, cy - y, color) // Top half
-            }
             for (i in cx - y..cx + y) {
-                setPixel(i, cy + x, color) // Right half
-                setPixel(i, cy - x, color) // Left half
+                setPixel(i, cy + x, c) // Bottom half
+                setPixel(i, cy - x, c) // Top half
             }
-
+            for (i in cx - x..cx + x) {
+                setPixel(i, cy + y, c) // Right half
+                setPixel(i, cy - y, c) // Left half
+            }
             if (d < 0) {
-                d += 2 * x + 1
+                d += 4 * x + 6
             } else {
-                d += 2 * (x - y) + 1
+                d += 4 * (x - y) + 10
                 y--
             }
             x++
-        } while (x <= y)
+        }
     }
 
     fun rect(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
-        for (x in x1..x2) {
-            setPixel(x, y1, color) // Top edge
-            setPixel(x, y2, color) // Bottom edge
+        val startX = max(0, min(x1, x2))
+        val endX = min(WIDTH - 1, max(x1, x2))
+        val startY = max(0, min(y1, y2))
+        val endY = min(HEIGHT - 1, max(y1, y2))
+        val c = color and NIBBLE_MASK
+
+        // Horizontal edges
+        for (x in startX..endX) {
+            setPixel(x, startY, c)
+            setPixel(x, endY, c)
         }
-        for (y in y1..y2) {
-            setPixel(x1, y, color) // Left edge
-            setPixel(x2, y, color) // Right edge
+
+        // Vertical edges (avoid overlapping corners)
+        for (y in startY + 1 until endY) {
+            setPixel(startX, y, c)
+            setPixel(endX, y, c)
         }
     }
 
     fun rectFill(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
-        val startX = minOf(x1, x2)
-        val endX = maxOf(x1, x2)
-        val startY = minOf(y1, y2)
-        val endY = maxOf(y1, y2)
+        val startX = max(0, min(x1, x2))
+        val endX = min(WIDTH - 1, max(x1, x2))
+        val startY = max(0, min(y1, y2))
+        val endY = min(HEIGHT - 1, max(y1, y2))
+        val c = color and NIBBLE_MASK
 
         for (y in startY..endY) {
             for (x in startX..endX) {
-                setPixel(x, y, color)
+                setPixel(x, y, c) // Use setPixel for simplicity
             }
         }
     }
 
     fun print(text: String, x: Int, y: Int, color: Int) {
-        var currentX = x
-        for (char in text) {
-            if (currentX >= WIDTH) break // prevent overflow
-            // TODO: implement font system chars will be 4x6,
-            setPixel(currentX, y, color)
-            currentX++
-        }
+        fontRenderer.renderText(this, text, x, y, color)
     }
 
     fun updateFramebuffer() {
-        for (i in 0 until WIDTH) {
-            for (j in 0 until HEIGHT) {
-                framebuffer.set(i, j, Color.getByte(getPixel(i, j)))
-            }
+        val bufferData: ByteArray = framebuffer.toMapColors()
+        var gridIndex = 0
+        var bufferIndex = 0
+        while (gridIndex < grid.size) {
+            val pair = grid[gridIndex].toInt() and 0xFF  // Add bitwise AND with 0xFF to clear sign extension
+            bufferData[bufferIndex++] = COLOR_CACHE[(pair shr 4) and 0xF]  // Ensure index is within bounds
+            bufferData[bufferIndex++] = COLOR_CACHE[pair and NIBBLE_MASK]
+            gridIndex++
         }
     }
-    fun getFramebuffer(): DirectFramebuffer {
-        return framebuffer
-    }
+    fun getFramebuffer(): DirectFramebuffer = framebuffer
 }
 
 fun sendFramebuffer(player: Player, pixelGrid: PixelGrid) {
