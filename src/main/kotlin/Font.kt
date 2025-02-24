@@ -8,7 +8,7 @@ class FontRenderer {
         calculateWidths() // calculate and store widths when the font is loaded
     }
 
-    fun renderText(grid: PixelGrid, text: String, x: Int, y: Int, color: Int) {
+    fun renderText(grid: PixelGrid, text: String, x: Int, y: Int) {
         var cursorX = x
         var cursorY = y
         for (char in text) {
@@ -23,7 +23,7 @@ class FontRenderer {
             for (px in 0 until width) {
                 for (py in 0 until 8) {
                     if (charBitmap[px + py * 8] != 0.toByte()) {
-                        grid.setPixel(cursorX + px, cursorY + py, color)
+                        grid.setPixel(cursorX + px, cursorY + py)
                     }
                 }
             }

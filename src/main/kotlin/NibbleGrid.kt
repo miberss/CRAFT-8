@@ -12,11 +12,16 @@ class PixelGrid {
         private const val NIBBLE_MASK = 0xF
         private val COLOR_CACHE = Array(16) { Color.getByte(it) }
     }
+    // current color
+    var color: Int = 1
+        set(value) {
+            field = value and NIBBLE_MASK
+        }
     private val fontRenderer = FontRenderer()
     private val grid = ByteArray(BYTE_WIDTH * HEIGHT)
     private val framebuffer = DirectFramebuffer()
 
-    fun setPixel(x: Int, y: Int, color: Int) {
+    fun setPixel(x: Int, y: Int) {
         if (x !in 0 until WIDTH || y !in 0 until HEIGHT) return
         val byteIndex = y * BYTE_WIDTH + (x shr 1)
         val current = grid[byteIndex].toInt()
@@ -33,12 +38,12 @@ class PixelGrid {
         return if (x and 1 == 0) (byte shr 4) and NIBBLE_MASK else byte and NIBBLE_MASK
     }
 
-    fun clear(value: Int) {
-        val nibble = (value and NIBBLE_MASK)
+    fun clear() {
+        val nibble = color and NIBBLE_MASK
         grid.fill(((nibble shl 4) or nibble).toByte())
     }
 
-    fun line(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    fun line(x1: Int, y1: Int, x2: Int, y2: Int) {
         var cx = x1
         var cy = y1
         val dx = abs(x2 - cx)
@@ -46,11 +51,10 @@ class PixelGrid {
         val sx = if (cx < x2) 1 else -1
         val sy = if (cy < y2) 1 else -1
         var err = dx + dy
-        val c = color and NIBBLE_MASK
 
         while (true) {
             if (cx in 0 until WIDTH && cy in 0 until HEIGHT) {
-                setPixel(cx, cy, c)
+                setPixel(cx, cy)
             }
 
             if (cx == x2 && cy == y2) break
@@ -66,46 +70,34 @@ class PixelGrid {
         }
     }
 
-    fun circ(cx: Int, cy: Int, r: Int, color: Int) {
-        var x = 0
-        var y = r
-        var d = 3 - 2 * r
-        val c = color and NIBBLE_MASK
-
-        while (y >= x) {
-            setPixel(cx + x, cy + y, c)
-            setPixel(cx - x, cy + y, c)
-            setPixel(cx + x, cy - y, c)
-            setPixel(cx - x, cy - y, c)
-            setPixel(cx + y, cy + x, c)
-            setPixel(cx - y, cy + x, c)
-            setPixel(cx + y, cy - x, c)
-            setPixel(cx - y, cy - x, c)
-
-            if (d < 0) {
-                d += 4 * x + 6
-            } else {
-                d += 4 * (x - y) + 10
-                y--
-            }
-            x++
+    fun circ(cx: Int, cy: Int, radius: Int, fill: Boolean = false) {
+        if (radius <= 0) {
+            return
         }
-    }
 
-    fun circFill(cx: Int, cy: Int, r: Int, color: Int) {
         var x = 0
-        var y = r
-        var d = 3 - 2 * r
-        val c = color and NIBBLE_MASK
+        var y = radius
+        var d = 3 - 2 * radius
 
         while (x <= y) {
-            for (i in cx - y..cx + y) {
-                setPixel(i, cy + x, c)
-                setPixel(i, cy - x, c)
-            }
-            for (i in cx - x..cx + x) {
-                setPixel(i, cy + y, c)
-                setPixel(i, cy - y, c)
+            if (fill) {
+                for (i in (cx - x)..(cx + x)) {
+                    setPixel(i, cy + y)
+                    setPixel(i, cy - y)
+                }
+                for (i in (cx - y)..(cx + y)) {
+                    setPixel(i, cy + x)
+                    setPixel(i, cy - x)
+                }
+            } else {
+                setPixel(cx + x, cy + y)
+                setPixel(cx - x, cy + y)
+                setPixel(cx + x, cy - y)
+                setPixel(cx - x, cy - y)
+                setPixel(cx + y, cy + x)
+                setPixel(cx - y, cy + x)
+                setPixel(cx + y, cy - x)
+                setPixel(cx - y, cy - x)
             }
             if (d < 0) {
                 d += 4 * x + 6
@@ -117,42 +109,38 @@ class PixelGrid {
         }
     }
 
-    fun rect(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    fun rect(x1: Int, y1: Int, x2: Int, y2: Int) {
         val startX = max(0, min(x1, x2))
         val endX = min(WIDTH - 1, max(x1, x2))
         val startY = max(0, min(y1, y2))
         val endY = min(HEIGHT - 1, max(y1, y2))
-        val c = color and NIBBLE_MASK
 
-        // horizontal edges
         for (x in startX..endX) {
-            setPixel(x, startY, c)
-            setPixel(x, endY, c)
+            setPixel(x, startY)
+            setPixel(x, endY)
         }
 
-        // vertical edges (avoid overlapping corners)
         for (y in startY + 1 until endY) {
-            setPixel(startX, y, c)
-            setPixel(endX, y, c)
+            setPixel(startX, y)
+            setPixel(endX, y)
         }
     }
 
-    fun rectFill(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+    fun rectFill(x1: Int, y1: Int, x2: Int, y2: Int) {
         val startX = max(0, min(x1, x2))
         val endX = min(WIDTH - 1, max(x1, x2))
         val startY = max(0, min(y1, y2))
         val endY = min(HEIGHT - 1, max(y1, y2))
-        val c = color and NIBBLE_MASK
 
         for (y in startY..endY) {
             for (x in startX..endX) {
-                setPixel(x, y, c)
+                setPixel(x, y)
             }
         }
     }
 
-    fun print(text: String, x: Int, y: Int, color: Int) {
-        fontRenderer.renderText(this, text, x, y, color)
+    fun print(text: String, x: Int, y: Int) {
+        fontRenderer.renderText(this, text, x, y)
     }
 
     fun updateFramebuffer() {
@@ -160,8 +148,8 @@ class PixelGrid {
         var gridIndex = 0
         var bufferIndex = 0
         while (gridIndex < grid.size) {
-            val pair = grid[gridIndex].toInt() and 0xFF  // AND with 0xFF to clear sign extension
-            bufferData[bufferIndex++] = COLOR_CACHE[(pair shr 4) and 0xF]  // ensure index is within bounds
+            val pair = grid[gridIndex].toInt() and 0xFF
+            bufferData[bufferIndex++] = COLOR_CACHE[(pair shr 4) and 0xF]
             bufferData[bufferIndex++] = COLOR_CACHE[pair and NIBBLE_MASK]
             gridIndex++
         }
