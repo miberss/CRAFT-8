@@ -1,3 +1,8 @@
+## Configuration
+1. Copy `config.properties.example` to `config.properties`
+2. Fill in your actual API key and other sensitive information
+3. The actual `config.properties` file is gitignored and should never be committed
+
 ## Graphics
 ```lua
 cls([c]) -- clears screen 
