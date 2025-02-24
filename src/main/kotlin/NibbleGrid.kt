@@ -99,14 +99,13 @@ class PixelGrid {
         val c = color and NIBBLE_MASK
 
         while (x <= y) {
-            // Draw horizontal lines to fill the circle
             for (i in cx - y..cx + y) {
-                setPixel(i, cy + x, c) // Bottom half
-                setPixel(i, cy - x, c) // Top half
+                setPixel(i, cy + x, c)
+                setPixel(i, cy - x, c)
             }
             for (i in cx - x..cx + x) {
-                setPixel(i, cy + y, c) // Right half
-                setPixel(i, cy - y, c) // Left half
+                setPixel(i, cy + y, c)
+                setPixel(i, cy - y, c)
             }
             if (d < 0) {
                 d += 4 * x + 6
@@ -125,13 +124,13 @@ class PixelGrid {
         val endY = min(HEIGHT - 1, max(y1, y2))
         val c = color and NIBBLE_MASK
 
-        // Horizontal edges
+        // horizontal edges
         for (x in startX..endX) {
             setPixel(x, startY, c)
             setPixel(x, endY, c)
         }
 
-        // Vertical edges (avoid overlapping corners)
+        // vertical edges (avoid overlapping corners)
         for (y in startY + 1 until endY) {
             setPixel(startX, y, c)
             setPixel(endX, y, c)
@@ -147,7 +146,7 @@ class PixelGrid {
 
         for (y in startY..endY) {
             for (x in startX..endX) {
-                setPixel(x, y, c) // Use setPixel for simplicity
+                setPixel(x, y, c)
             }
         }
     }
@@ -161,8 +160,8 @@ class PixelGrid {
         var gridIndex = 0
         var bufferIndex = 0
         while (gridIndex < grid.size) {
-            val pair = grid[gridIndex].toInt() and 0xFF  // Add bitwise AND with 0xFF to clear sign extension
-            bufferData[bufferIndex++] = COLOR_CACHE[(pair shr 4) and 0xF]  // Ensure index is within bounds
+            val pair = grid[gridIndex].toInt() and 0xFF  // AND with 0xFF to clear sign extension
+            bufferData[bufferIndex++] = COLOR_CACHE[(pair shr 4) and 0xF]  // ensure index is within bounds
             bufferData[bufferIndex++] = COLOR_CACHE[pair and NIBBLE_MASK]
             gridIndex++
         }
@@ -170,7 +169,7 @@ class PixelGrid {
     fun getFramebuffer(): DirectFramebuffer = framebuffer
 }
 
-fun sendFramebuffer(player: Player, pixelGrid: PixelGrid) {
+fun sendFramebuffer(player: Player, pixelGrid: PixelGrid, gameId: Int) {
     pixelGrid.updateFramebuffer()
-    player.sendPacket(pixelGrid.getFramebuffer().preparePacket(1))
+    player.sendPacket(pixelGrid.getFramebuffer().preparePacket(gameId))
 }

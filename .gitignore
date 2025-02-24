@@ -54,3 +54,4 @@ bin/
 .DS_Store
 *.iml
 *.class
+/src/main/resources/config.properties

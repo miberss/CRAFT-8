@@ -1,5 +1,6 @@
 package me.mibers.Extra
 
+import me.mibers.mapCounter
 import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.*
@@ -11,12 +12,6 @@ import net.minestom.server.item.ItemComponent
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.timer.TaskSchedule
-
-/*
- * PICO8
- * OnJoin
- * Created by mibers on 2/17/2025.
- */
 
 fun onJoin(eventHandler: GlobalEventHandler, instanceContainer: InstanceContainer) {
     eventHandler.addListener(AsyncPlayerConfigurationEvent::class.java) { event ->
@@ -41,7 +36,7 @@ fun createSeat(player: Player, instance: InstanceContainer) {
 }
 fun giveMap(player: Player) {
     val map = ItemStack.builder((Material.FILLED_MAP))
-        .set(ItemComponent.MAP_ID, 1)
+        .set(ItemComponent.MAP_ID, mapCounter)
         .build()
-    player.inventory.addItemStack(map)
+    player.itemInMainHand = map
 }

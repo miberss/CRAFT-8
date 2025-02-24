@@ -2,6 +2,7 @@ package API
 
 import org.luaj.vm2.*
 import org.luaj.vm2.lib.OneArgFunction
+import org.luaj.vm2.lib.TwoArgFunction
 import kotlin.math.*
 
 fun MathAPI(lua: Globals) {
@@ -19,9 +20,22 @@ fun MathAPI(lua: Globals) {
         }
     })
 
+    lua.set("atan2", object : TwoArgFunction() {
+        override fun call(x: LuaValue, y: LuaValue): LuaValue {
+            return LuaValue.valueOf(atan2(x.todouble(), y.todouble()))
+        }
+    })
+
     lua.set("flr", object : OneArgFunction() {
         override fun call(number: LuaValue): LuaValue {
             return LuaValue.valueOf(floor(number.todouble()))
+        }
+    })
+
+    lua.set("rnd", object : OneArgFunction() {
+        override fun call(max: LuaValue): LuaValue {
+            val maxVal = max.todouble()
+            return LuaValue.valueOf(Math.random() * maxVal)
         }
     })
 
@@ -56,7 +70,7 @@ fun MathAPI(lua: Globals) {
             }
             val first = args.arg(1).todouble()
             val second = if (args.narg() >= 2) args.arg(2).todouble() else 0.0
-            return LuaValue.valueOf(Math.max(first, second))
+            return LuaValue.valueOf(max(first, second))
         }
     })
 
@@ -67,7 +81,7 @@ fun MathAPI(lua: Globals) {
             }
             val first = args.arg(1).todouble()
             val second = if (args.narg() >= 2) args.arg(2).todouble() else 0.0
-            return LuaValue.valueOf(Math.min(first, second))
+            return LuaValue.valueOf(min(first, second))
         }
     })
 
@@ -79,4 +93,6 @@ fun MathAPI(lua: Globals) {
             return LuaValue.valueOf(listOf(first, second, third).sorted()[1])
         }
     })
+
+
 }
