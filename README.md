@@ -31,9 +31,6 @@ rnd() -- random number
 ```lua
 t() or time()
 add(table, value)
-del(table, value)
-foreach(table, function)
-all(table)
 
 btn(input) -- A, S, W, D, Jump, Sprint
 ```
