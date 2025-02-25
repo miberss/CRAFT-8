@@ -1,14 +1,15 @@
 package me.mibers
 
 import API.*
-import org.luaj.vm2.*
-import org.luaj.vm2.lib.jse.JsePlatform
+import API.TableAPI
 import kotlinx.coroutines.*
 import me.mibers.Extra.giveMap
 import net.minestom.server.MinecraftServer
 import net.minestom.server.entity.Player
 import net.minestom.server.timer.Task
 import net.minestom.server.timer.TaskSchedule
+import party.iroiro.luajava.LuaException
+import party.iroiro.luajava.luajit.LuaJit
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -19,9 +20,9 @@ var mapCounter = 0
 
 class Game(val id: Int) {
     private val pixelGrid = PixelGrid()
-    private val lua: Globals = JsePlatform.standardGlobals()
-    var updateFn: LuaValue? = null
-    var drawFn: LuaValue? = null
+    private val lua: LuaJit = LuaJit().apply { openLibraries() }
+    var updateFn: ((Double) -> Unit)? = null
+    var drawFn: (() -> Unit)? = null
     private var time: Double = 0.0
     var task: Task? = null
 
@@ -40,6 +41,7 @@ class Game(val id: Int) {
     }
 
     private val timeLock = ReentrantLock()
+    private val luaLock = ReentrantLock()
     private val coroutineScope = CoroutineScope(Dispatchers.Default)
 
     init {
@@ -56,26 +58,56 @@ class Game(val id: Int) {
 
     fun loadScript(script: String) {
         try {
-            lua.load(script).call()
-            val initFn = lua.get("_init")
-            if (initFn?.isfunction() == true) initFn.call()
-            updateFn = lua.get("_update")
-            if (updateFn?.isfunction() != true) updateFn = null
-
-            drawFn = lua.get("_draw")
-            if (drawFn?.isfunction() != true) drawFn = null
-        } catch (e: LuaError) {
+            luaLock.withLock {
+                lua.load(script)
+                lua.pCall(0, 0)
+                lua.getGlobal("_init")
+                if (lua.isFunction(-1)) {
+                    lua.pCall(0, 0)
+                } else {
+                    lua.pop(1)
+                }
+                lua.getGlobal("_update")
+                if (lua.isFunction(-1)) {
+                    updateFn = { deltaTime: Double ->
+                        luaLock.withLock {
+                            lua.top = 0
+                            lua.getGlobal("_update")
+                            lua.push(deltaTime)
+                            lua.pCall(1, 0)
+                        }
+                    }
+                } else {
+                    lua.pop(1)
+                    updateFn = null
+                }
+                lua.getGlobal("_draw")
+                if (lua.isFunction(-1)) {
+                    drawFn = {
+                        luaLock.withLock {
+                            lua.top = 0
+                            lua.getGlobal("_draw")
+                            lua.pCall(0, 0)
+                        }
+                    }
+                } else {
+                    lua.pop(1)
+                    drawFn = null
+                }
+            }
+        } catch (e: LuaException) {
             e.printStackTrace()
         }
     }
 
+
     fun update(deltaTime: Double) {
         coroutineScope.launch {
-            timeLock.withLock {
-                time += deltaTime
-            }
             try {
-                updateFn?.call(LuaValue.valueOf(deltaTime))
+                timeLock.withLock {
+                    time += deltaTime
+                }
+                updateFn?.invoke(deltaTime)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -85,7 +117,7 @@ class Game(val id: Int) {
     fun draw() {
         coroutineScope.launch {
             try {
-                drawFn?.call()
+                drawFn?.invoke()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -101,6 +133,7 @@ class Game(val id: Int) {
     fun shutdown() {
         coroutineScope.cancel()
         playerInputs.keys.forEach { playerInputs[it] = false }
+        task?.cancel()
         task = null
         updateFn = null
         drawFn = null
@@ -111,17 +144,16 @@ class Game(val id: Int) {
     }
 }
 
-
 fun loadGame(player: Player, script: String) {
-    // stop and remove any running game before starting a new one
     mapCounter += 1
+
     val game = activeGames[player]
     game?.shutdown()
     game?.task?.cancel()
     game?.task = null
     activeGames.remove(player)
 
-    // store the newly loaded script
+    // Store the newly loaded script
     loadedGames[player] = script
 }
 
@@ -154,10 +186,11 @@ fun runGame(player: Player) {
         val deltaTime = (currentTime - lastTime) / 1_000_000_000.0
         lastTime = currentTime
 
-        println(game.id)
+        println("Game ID: ${game.id}, deltaTime: $deltaTime")
 
         game.update(deltaTime)
-        game.draw()
+
+        game.getPixelGrid().swapBuffers()
         sendFramebuffer(player, game.getPixelGrid(), game.id)
 
         if (game.updateFn == null && game.drawFn == null) {
@@ -174,5 +207,7 @@ fun runGame(player: Player) {
             "forward" to player.inputs().forward()
         )
         game.updatePlayerInputs(inputs)
+
+        game.draw() // keep at back
     }, TaskSchedule.tick(1), TaskSchedule.tick(1))
 }

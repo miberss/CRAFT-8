@@ -12,20 +12,23 @@ class PixelGrid {
         private const val NIBBLE_MASK = 0xF
         private val COLOR_CACHE = Array(16) { Color.getByte(it) }
     }
+
     // current color
     var color: Int = 1
         set(value) {
             field = value and NIBBLE_MASK
         }
+
     private val fontRenderer = FontRenderer()
-    private val grid = ByteArray(BYTE_WIDTH * HEIGHT)
+    private val grid = ByteArray(BYTE_WIDTH * HEIGHT) // visible buffer (front buffer)
+    private val offscreenGrid = ByteArray(BYTE_WIDTH * HEIGHT) // offscreen buffer (back buffer)
     private val framebuffer = DirectFramebuffer()
 
     fun setPixel(x: Int, y: Int) {
         if (x !in 0 until WIDTH || y !in 0 until HEIGHT) return
         val byteIndex = y * BYTE_WIDTH + (x shr 1)
-        val current = grid[byteIndex].toInt()
-        grid[byteIndex] = if (x and 1 == 0) {
+        val current = offscreenGrid[byteIndex].toInt()
+        offscreenGrid[byteIndex] = if (x and 1 == 0) {
             (current and 0x0F or ((color and NIBBLE_MASK) shl 4)).toByte()
         } else {
             (current and 0xF0 or (color and NIBBLE_MASK)).toByte()
@@ -34,13 +37,18 @@ class PixelGrid {
 
     fun getPixel(x: Int, y: Int): Int {
         if (x !in 0 until WIDTH || y !in 0 until HEIGHT) return 0
-        val byte = grid[y * BYTE_WIDTH + (x shr 1)].toInt()
+        val byte = offscreenGrid[y * BYTE_WIDTH + (x shr 1)].toInt()
         return if (x and 1 == 0) (byte shr 4) and NIBBLE_MASK else byte and NIBBLE_MASK
     }
 
     fun clear() {
         val nibble = color and NIBBLE_MASK
-        grid.fill(((nibble shl 4) or nibble).toByte())
+        offscreenGrid.fill(((nibble shl 4) or nibble).toByte())
+    }
+
+    fun swapBuffers() {
+        System.arraycopy(offscreenGrid, 0, grid, 0, grid.size)
+        updateFramebuffer()
     }
 
     fun line(x1: Int, y1: Int, x2: Int, y2: Int) {
