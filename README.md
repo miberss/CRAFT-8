@@ -4,9 +4,8 @@ CRAFT-8 is a "game engine" server, where you can create games that other players
 Games are made with Lua, using implemented API functions, like btn(key) to get the player's current inputs, circ(x,y,color) to create a circle with a color, etc.
 
 You can also make graphical displays (demoscene, and such), like a donut.
+
 https://github.com/user-attachments/assets/24893b41-c991-459b-95b3-1f16a15c3521
-
-
 
 CRAFT-8 is meant to be a very rough version of PICO-8 by lexaloffle, and is barely going to "emulate" it. It is not meant to be 1 to 1 compatiable, and you are not able to port current PICO-8 games with lots of tweaking.
 
