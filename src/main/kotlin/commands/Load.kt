@@ -1,7 +1,6 @@
-package me.mibers.Commands
+package commands
 
-import Linking.APIManager
-import me.mibers.Game
+import linking.APIManager
 import me.mibers.RGB
 import me.mibers.loadGame
 import me.mibers.loadedGames
@@ -10,7 +9,7 @@ import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player
 
-class LoadCommand : Command("load") {
+class Load : Command("load") {
     init {
         val scriptArg = ArgumentType.String("gameName")
 

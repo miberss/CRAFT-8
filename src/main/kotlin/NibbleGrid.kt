@@ -147,6 +147,37 @@ class PixelGrid {
         }
     }
 
+    fun trifill(x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int) {
+        val vertices = listOf(Pair(x1, y1), Pair(x2, y2), Pair(x3, y3)).sortedBy { it.second }
+        val (xTop, yTop) = vertices[0]
+        val (xMiddle, yMiddle) = vertices[1]
+        val (xBottom, yBottom) = vertices[2]
+        fun interpolateX(y: Int, x1: Int, y1: Int, x2: Int, y2: Int): Int {
+            if (y1 == y2) return x1
+            return x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+        }
+        for (y in yTop..yBottom) {
+            var xStart: Int
+            var xEnd: Int
+            if (y < yMiddle) {
+                xStart = interpolateX(y, xTop, yTop, xMiddle, yMiddle)
+                xEnd = interpolateX(y, xTop, yTop, xBottom, yBottom)
+            } else {
+                xStart = interpolateX(y, xMiddle, yMiddle, xBottom, yBottom)
+                xEnd = interpolateX(y, xTop, yTop, xBottom, yBottom)
+            }
+            if (xStart > xEnd) {
+                val temp = xStart
+                xStart = xEnd
+                xEnd = temp
+            }
+            for (x in xStart..xEnd) {
+                setPixel(x, y)
+            }
+        }
+    }
+
+
     fun print(text: String, x: Int, y: Int) {
         fontRenderer.renderText(this, text, x, y)
     }

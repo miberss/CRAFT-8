@@ -1,10 +1,10 @@
-package API
+package api
 
 import me.mibers.PixelGrid
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
-fun GraphicsAPI(lua: Lua, pixelGrid: PixelGrid) {
+fun graphicsAPI(lua: Lua, pixelGrid: PixelGrid) {
     lua.set("pset", JFunction { state: Lua ->
         val x = state.toNumber(1).toInt()
         val y = state.toNumber(2).toInt()
@@ -85,6 +85,20 @@ fun GraphicsAPI(lua: Lua, pixelGrid: PixelGrid) {
             pixelGrid.color = state.toNumber(5).toInt()
         }
         pixelGrid.line(x1, y1, x2, y2)
+        0
+    })
+
+    lua.set("trifill", JFunction { state: Lua ->
+        val x1 = state.toNumber(1).toInt()
+        val y1 = state.toNumber(2).toInt()
+        val x2 = state.toNumber(3).toInt()
+        val y2 = state.toNumber(4).toInt()
+        val x3 = state.toNumber(5).toInt()
+        val y3 = state.toNumber(6).toInt()
+        if (!state.isNil(7)) {
+            pixelGrid.color = state.toNumber(7).toInt()
+        }
+        pixelGrid.trifill(x1, y1, x2, y2, x3, y3)
         0
     })
 

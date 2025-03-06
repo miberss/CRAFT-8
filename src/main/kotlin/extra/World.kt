@@ -11,7 +11,7 @@ import net.minestom.server.world.biome.BiomeEffects
 import net.minestom.server.world.biome.BiomeParticle
 
 fun initInstance(instanceContainer: InstanceContainer) {
-    val customBiome = Biome.builder()
+    val biome = Biome.builder()
         .effects(
             BiomeEffects.builder()
                 .skyColor(0x000000)
@@ -26,7 +26,7 @@ fun initInstance(instanceContainer: InstanceContainer) {
         )
         .build()
     val biomeRegistry = MinecraftServer.getBiomeRegistry()
-    biomeRegistry.register("pink", customBiome)
+    biomeRegistry.register("pink", biome)
     instanceContainer.setChunkSupplier(::LightingChunk)
     instanceContainer.timeRate = 0
     instanceContainer.time = 6000

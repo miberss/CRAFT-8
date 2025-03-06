@@ -1,6 +1,6 @@
 package me.mibers
 
-import me.mibers.Commands.initCommands
+import commands.initCommands
 import me.mibers.Extra.initTpsMonitor
 import me.mibers.Extra.initInstance
 import me.mibers.Extra.onJoin

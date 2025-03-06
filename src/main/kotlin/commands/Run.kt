@@ -1,4 +1,4 @@
-package me.mibers.Commands
+package commands
 
 import me.mibers.RGB
 import me.mibers.loadedGames
@@ -7,13 +7,7 @@ import net.kyori.adventure.text.Component
 import net.minestom.server.command.builder.Command
 import net.minestom.server.entity.Player
 
-/*
- * PICO8
- * Run
- * Created by mibers on 2/17/2025.
-*/
-
-class RunCommand : Command("run") {
+class Run : Command("run") {
     init {
         addSyntax({ sender, _ ->
             if (sender !is Player) {

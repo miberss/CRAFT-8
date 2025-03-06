@@ -1,16 +1,14 @@
 package me.mibers
 
-import API.*
-import API.TableAPI
+import api.*
 import kotlinx.coroutines.*
 import me.mibers.Extra.giveMap
-import net.minestom.server.MinecraftServer
 import net.minestom.server.entity.Player
-import net.minestom.server.timer.Task
-import net.minestom.server.timer.TaskSchedule
 import party.iroiro.luajava.LuaException
 import party.iroiro.luajava.luajit.LuaJit
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -24,7 +22,6 @@ class Game(val id: Int) {
     var updateFn: ((Double) -> Unit)? = null
     var drawFn: (() -> Unit)? = null
     private var time: Double = 0.0
-    var task: Task? = null
 
     // using ConcurrentHashMap for thread-safe player inputs
     private val inputMapping = mapOf(
@@ -36,7 +33,6 @@ class Game(val id: Int) {
         5 to "jump"
     )
 
-    // using ConcurrentHashMap for thread-safe player inputs
     private val playerInputs = ConcurrentHashMap<String, Boolean>().apply {
         inputMapping.values.forEach { put(it, false) }
     }
@@ -50,11 +46,11 @@ class Game(val id: Int) {
     }
 
     private fun setupLuaAPI() {
-        GraphicsAPI(lua, pixelGrid)
-        MathAPI(lua)
-        TimeAPI(lua, time)
-        InputAPI(lua, inputMapping, playerInputs)
-        TableAPI(lua)
+        graphicsAPI(lua, pixelGrid)
+        mathAPI(lua)
+        timeAPI(lua, time)
+        inputAPI(lua, inputMapping, playerInputs)
+        tableAPI(lua)
     }
 
     fun loadScript(script: String) {
@@ -101,7 +97,6 @@ class Game(val id: Int) {
         }
     }
 
-
     fun update(deltaTime: Double) {
         coroutineScope.launch {
             try {
@@ -134,40 +129,29 @@ class Game(val id: Int) {
     fun shutdown() {
         coroutineScope.cancel()
         playerInputs.keys.forEach { playerInputs[it] = false }
-        task?.cancel()
-        task = null
         updateFn = null
         drawFn = null
     }
 
-    fun getPixelGrid(): PixelGrid {
-        return pixelGrid
-    }
+    fun getPixelGrid(): PixelGrid = pixelGrid
 }
+
+private val executor = Executors.newSingleThreadScheduledExecutor()
 
 fun loadGame(player: Player, script: String) {
     mapCounter += 1
-
-    val game = activeGames[player]
-    game?.shutdown()
-    game?.task?.cancel()
-    game?.task = null
+    activeGames[player]?.shutdown()
     activeGames.remove(player)
-
-    // Store the newly loaded script
     loadedGames[player] = script
 }
 
 fun runGame(player: Player) {
-    val code = loadedGames[player]
-
-    if (code == null) {
+    val code = loadedGames[player] ?: run {
         player.sendMessage("No game loaded! Use /load <game> first.")
         return
     }
 
-    val currentGame = activeGames[player]
-    currentGame?.shutdown()
+    activeGames[player]?.shutdown()
     activeGames.remove(player)
     giveMap(player)
 
@@ -177,27 +161,14 @@ fun runGame(player: Player) {
 
     var lastTime = System.nanoTime()
 
-    game.task = MinecraftServer.getSchedulerManager().scheduleTask({
+    executor.scheduleAtFixedRate({
         if (!activeGames.containsKey(player)) {
             game.shutdown()
-            return@scheduleTask
+            return@scheduleAtFixedRate
         }
-
         val currentTime = System.nanoTime()
         val deltaTime = (currentTime - lastTime) / 1_000_000_000.0
         lastTime = currentTime
-
-        println("Game ID: ${game.id}, deltaTime: $deltaTime")
-
-        game.update(deltaTime)
-
-        game.getPixelGrid().swapBuffers()
-        sendFramebuffer(player, game.getPixelGrid(), game.id)
-
-        if (game.updateFn == null && game.drawFn == null) {
-            game.shutdown()
-            return@scheduleTask
-        }
 
         val inputs = mapOf(
             "jump" to player.inputs().jump(),
@@ -207,8 +178,10 @@ fun runGame(player: Player) {
             "left" to player.inputs().left(),
             "forward" to player.inputs().forward()
         )
+        game.getPixelGrid().swapBuffers()
+        sendFramebuffer(player, game.getPixelGrid(), game.id)
         game.updatePlayerInputs(inputs)
-
-        game.draw() // keep at back
-    }, TaskSchedule.tick(1), TaskSchedule.tick(1))
+        game.update(deltaTime)
+        game.draw()
+    }, 0, 33, TimeUnit.MILLISECONDS)
 }

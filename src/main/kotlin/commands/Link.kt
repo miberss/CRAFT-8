@@ -1,8 +1,8 @@
-package Commands
+package commands
 
-import Linking.APIManager
-import Linking.UserResponse
-import Linking.VerificationResponse
+import linking.APIManager
+import linking.UserResponse
+import linking.VerificationResponse
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
 import net.minestom.server.entity.Player

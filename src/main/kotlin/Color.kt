@@ -1,7 +1,6 @@
 package me.mibers
 
 import net.kyori.adventure.text.format.TextColor
-import net.minestom.server.map.MapColors
 
 object Color {
     private val COLORS = byteArrayOf(
@@ -11,9 +10,9 @@ object Color {
         -126, 35, 82, 10
     )
     fun getByte(index: Int) = COLORS[index and 0xF]
-    fun all() = COLORS
 }
-public object RGB {
+
+object RGB {
     val BLACK = TextColor.color(0, 0, 0)
     val DARK_BLUE = TextColor.color(29, 43, 83)
     val DARK_PURPLE = TextColor.color(126, 37, 83)

@@ -1,9 +1,9 @@
-package API
+package api
 
 import party.iroiro.luajava.Lua
 import party.iroiro.luajava.JFunction
 
-fun TableAPI(lua: Lua) {
+fun tableAPI(lua: Lua) {
     lua.set("add", JFunction { state ->
         if (!state.isTable(1)) {
             state.error("First argument must be a table")

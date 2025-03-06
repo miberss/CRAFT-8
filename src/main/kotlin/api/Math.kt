@@ -1,10 +1,10 @@
-package API
+package api
 
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 import kotlin.math.*
 
-fun MathAPI(lua: Lua) {
+fun mathAPI(lua: Lua) {
     lua.set("cos", JFunction { state: Lua ->
         val angle = state.toNumber(1)
         val rad = angle * 2 * PI // Convert to radians

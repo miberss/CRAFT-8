@@ -1,9 +1,9 @@
-package API
+package api
 
 import party.iroiro.luajava.JFunction
 import party.iroiro.luajava.Lua
 
-fun InputAPI(lua: Lua, inputMapping: Map<Int, String>, playerInputs: Map<String, Boolean>) {
+fun inputAPI(lua: Lua, inputMapping: Map<Int, String>, playerInputs: Map<String, Boolean>) {
     lua.set("btn", JFunction { state: Lua ->
         val buttonNumber = state.toInteger(1).toInt()
         val inputName = inputMapping[buttonNumber]

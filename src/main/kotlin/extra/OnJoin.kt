@@ -22,7 +22,7 @@ fun onJoin(eventHandler: GlobalEventHandler, instanceContainer: InstanceContaine
         giveMap(player)
         MinecraftServer.getSchedulerManager().scheduleTask({
             createSeat(player, instanceContainer)
-        }, TaskSchedule.tick(20), TaskSchedule.stop()) // Run after 20 ticks, then stop
+        }, TaskSchedule.tick(20), TaskSchedule.stop())
     }
 
     eventHandler.addListener(PlayerSkinInitEvent::class.java) { event ->

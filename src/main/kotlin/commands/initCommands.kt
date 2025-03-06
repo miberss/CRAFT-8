@@ -1,11 +1,10 @@
-package me.mibers.Commands
+package commands
 
-import Commands.Link
 import net.minestom.server.MinecraftServer
 
 fun initCommands() {
     val commandManager = MinecraftServer.getCommandManager()
-    commandManager.register(RunCommand())
-    commandManager.register(LoadCommand())
+    commandManager.register(Run())
+    commandManager.register(Load())
     commandManager.register(Link())
 }

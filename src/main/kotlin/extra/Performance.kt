@@ -1,5 +1,6 @@
 package me.mibers.Extra
 
+import me.mibers.RGB
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextColor
 import net.minestom.server.MinecraftServer
@@ -25,6 +26,6 @@ fun initTpsMonitor() {
 
         val message = Component.text("${round(ramUsage, 3)}MB ")
             .append(Component.text("${round(tickMonitor.tickTime, 3)}ms "))
-        Audiences.players().sendActionBar(message.color(TextColor.color(0xEF7DA3)))
+        Audiences.players().sendActionBar(message.color(TextColor.color(RGB.PINK)))
     }.repeat(1, TimeUnit.SERVER_TICK).schedule()
 }
