@@ -1,11 +1,9 @@
-<<<<<<< HEAD
 ## Configuration
 1. Copy `config.properties.example` to `config.properties`
 2. Fill in your actual api key and other sensitive information
 3. The actual `config.properties` file is gitignored and should never be committed
 =======
 # CRAFT-8
->>>>>>> 50c93a2eb5f32b476add6133ae47bf6e408f2c52
 
 CRAFT-8 is a "game engine" server, where you can create games that other players get to play and rate
 Games are made with Lua, using implemented API functions, like btn(key) to get the player's current inputs, circ(x,y,color) to create a circle with a color, etc.
