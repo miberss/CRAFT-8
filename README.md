@@ -2,7 +2,6 @@
 1. Copy `config.properties.example` to `config.properties`
 2. Fill in your actual api key and other sensitive information
 3. The actual `config.properties` file is gitignored and should never be committed
-=======
 # CRAFT-8
 
 CRAFT-8 is a "game engine" server, where you can create games that other players get to play and rate
