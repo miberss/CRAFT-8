@@ -26,6 +26,7 @@ class Game(val id: Int) {
     private var time: Double = 0.0
     var task: Task? = null
 
+    // using ConcurrentHashMap for thread-safe player inputs
     private val inputMapping = mapOf(
         0 to "left",
         1 to "right",
